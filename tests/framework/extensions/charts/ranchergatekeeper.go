@@ -141,7 +141,8 @@ func newGatekeeperChartInstallAction(p *payloadOpts, rancherGatekeeperOpts *Ranc
 	gatekeeperValues := map[string]interface{}{}
 
 	chartInstall := newChartInstall(p.Name, p.InstallOptions.Version, p.InstallOptions.ClusterID, p.InstallOptions.ClusterName, p.Host, gatekeeperValues)
-	chartInstalls := []types.ChartInstall{*chartInstall}
+	chartInstallCRD := newChartInstall(p.Name+"-crd", p.InstallOptions.Version, p.InstallOptions.ClusterID, p.InstallOptions.ClusterName, p.Host, gatekeeperValues)
+	chartInstalls := []types.ChartInstall{*chartInstall, *chartInstallCRD}
 
 	chartInstallAction := newChartInstallAction(p.Namespace, p.InstallOptions.ProjectID, chartInstalls)
 
