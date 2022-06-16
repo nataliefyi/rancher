@@ -56,7 +56,7 @@ type RancherMonitoringOpts struct {
 	RKEScheduler         bool
 }
 
-// RancherOPAGatekeeperOpts is a struct of the required options to install OPA Gatekeeper with desired chart values
+// RancherGatekeeperOpts is a struct of the required options to install OPA Gatekeeper with desired chart values
 type RancherGatekeeperOpts struct {
 }
 

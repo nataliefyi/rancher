@@ -20,17 +20,48 @@ const (
 	RancherGatekeeperNamespace = "cattle-gatekeeper-system"
 	// Name of the rancher gatekeeper chart
 	RancherGatekeeperName = "rancher-gatekeeper"
+	//namespace that is created without a label
+	RancherDisallowedNamespace = "no-label"
 )
 
-func InstallRancherGatekeeperChart(client *rancher.Client, installOptions *InstallOptions, rancherGatekeeperOpts *RancherGatekeeperOpts) error {
+type Status struct {
+	AuditTimestamp  map[string]string
+	ByPod           interface{}
+	TotalViolations int64
+	Violations      []interface{}
+}
+type Items struct {
+	ApiVersion string
+	Kind       string
+	Metadata   interface{}
+	Spec       interface{}
+	Status     Status
+}
+type ConstraintResponse struct {
+	ApiVersion string
+	Items      []Items
+	Kind       string
+	Metadata   interface{}
+}
+
+// type namespaceOpts struct {
+// 	Namespace                     string
+// 	ContainerDefaultResourceLimit string
+// 	labels                        map[string]string
+// 	annotations                   map[string]string
+// 	project                       client.Project
+// }
+
+func InstallRancherGatekeeperChart(client *rancher.Client, installOptions *InstallOptions) error {
+	hostWithProtocol := fmt.Sprintf("https://%s", client.RancherConfig.Host)
 	gatekeeperChartInstallActionPayload := &payloadOpts{
 		InstallOptions: *installOptions,
 		Name:           RancherGatekeeperName,
-		Host:           client.RancherConfig.Host,
+		Host:           hostWithProtocol,
 		Namespace:      RancherGatekeeperNamespace,
 	}
 
-	chartInstallAction := newGatekeeperChartInstallAction(gatekeeperChartInstallActionPayload, rancherGatekeeperOpts)
+	chartInstallAction := newGatekeeperChartInstallAction(gatekeeperChartInstallActionPayload)
 
 	catalogClient, err := client.GetClusterCatalogClient(installOptions.ClusterID)
 	if err != nil {
@@ -137,14 +168,14 @@ func InstallRancherGatekeeperChart(client *rancher.Client, installOptions *Insta
 	return nil
 }
 
-func newGatekeeperChartInstallAction(p *payloadOpts, rancherGatekeeperOpts *RancherGatekeeperOpts) *types.ChartInstallAction {
+func newGatekeeperChartInstallAction(p *payloadOpts) *types.ChartInstallAction {
 	gatekeeperValues := map[string]interface{}{}
 
 	chartInstall := newChartInstall(p.Name, p.InstallOptions.Version, p.InstallOptions.ClusterID, p.InstallOptions.ClusterName, p.Host, gatekeeperValues)
 	chartInstallCRD := newChartInstall(p.Name+"-crd", p.InstallOptions.Version, p.InstallOptions.ClusterID, p.InstallOptions.ClusterName, p.Host, gatekeeperValues)
-	chartInstalls := []types.ChartInstall{*chartInstall, *chartInstallCRD}
+	chartInstalls := []types.ChartInstall{*chartInstallCRD, *chartInstall}
 
-	chartInstallAction := newChartInstallAction(p.Namespace, p.InstallOptions.ProjectID, chartInstalls)
+	chartInstallAction := newChartInstallAction(p.Namespace, p.ProjectID, chartInstalls)
 
 	return chartInstallAction
 }

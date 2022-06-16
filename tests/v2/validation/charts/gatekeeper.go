@@ -1,8 +1,6 @@
 package charts
 
-import (
-	"github.com/rancher/rancher/tests/framework/extensions/charts"
-)
+import "k8s.io/apimachinery/pkg/runtime/schema"
 
 // // kubeConfig is a basic kubeconfig that uses the pod's service account
 // const kubeConfig = `
@@ -27,22 +25,23 @@ import (
 
 const (
 	// Project that charts are installed in
-	gatekeeperProjectName = "gatekeeper-project"
+	gatekeeperProjectName    = "gatekeeper-project"
+	gatekeeperConstraintName = "all-must-have-owner"
 )
 
+var Constraint = schema.GroupVersionResource{
+	Group:    "constraints.gatekeeper.sh",
+	Version:  "v1beta1",
+	Resource: "k8srequiredlabels",
+}
+
+var Namespaces = schema.GroupVersionResource{
+	Group:    "",
+	Version:  "v1",
+	Resource: "namespaces",
+}
+
 // chartInstallOptions is a private struct that has gatekeeper and gatekeeper-crd install options
-type gatekeeperChartInstallOptions struct {
-	//gatekeepercrd *charts.InstallOptions
-	gatekeeper *charts.InstallOptions
-}
-
-// chartFeatureOptions is a private struct that has gatekeeper and gatekeeper-crd feature options
-// catalog client
-type gatekeeperChartFeatureOptions struct {
-	//gatekeepercrd *charts.RancherGatekeeperOpts
-	gatekeeper *charts.RancherGatekeeperOpts
-}
-
 // may not be necessary
 
 // func buildConstraintTemplate(client *rancher.Client, rest *rest.Config) {
