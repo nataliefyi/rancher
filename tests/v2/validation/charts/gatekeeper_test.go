@@ -81,11 +81,19 @@ func (g *GateKeeperTestSuite) TestGatekeeperChart() {
 	err = charts.InstallRancherGatekeeperChart(client, g.gatekeeperChartInstallOptions)
 	require.NoError(g.T(), err)
 
+<<<<<<< HEAD
 	g.T().Log("Waiting for gatekeeper chart deployments to have expected number of available replicas")
 	err = charts.WatchAndWaitDeployments(client, g.project.ClusterID, charts.RancherGatekeeperNamespace, metav1.ListOptions{})
 	require.NoError(g.T(), err)
 
 	g.T().Log("Waiting for gatekeeper chart DaemonSets to have expected number of available nodes")
+=======
+	g.T().Log("Waiting gatekeeper chart deployments to have expected number of available replicas")
+	err = charts.WatchAndWaitDeployments(client, g.project.ClusterID, charts.RancherGatekeeperNamespace, metav1.ListOptions{})
+	require.NoError(g.T(), err)
+
+	g.T().Log("Waiting gatekeeper chart DaemonSets to have expected number of available nodes")
+>>>>>>> d813e9123a381e8e4693f479aa4bde53cb7d0ffe
 	err = charts.WatchAndWaitDaemonSets(client, g.project.ClusterID, charts.RancherGatekeeperNamespace, metav1.ListOptions{})
 	require.NoError(g.T(), err)
 
@@ -108,6 +116,7 @@ func (g *GateKeeperTestSuite) TestGatekeeperChart() {
 	_, err = namespaces.CreateNamespace(client, charts.RancherDisallowedNamespace, "{}", map[string]string{}, map[string]string{}, g.project)
 	assert.EqualError(g.T(), err, "admission webhook \"validation.gatekeeper.sh\" denied the request: [all-must-have-owner] All namespaces must have an `owner` label that points to your company username")
 
+<<<<<<< HEAD
 	//sleep until the first audit finishes running.
 	//AuditTimestamp will be empty string until first audit finishes
 	//audit runs every 60 seconds, plus an arbitrary amount of time to set up the audit pod and for the audit itself
@@ -127,6 +136,22 @@ func (g *GateKeeperTestSuite) TestGatekeeperChart() {
 		//extract the timestamp of the last constraint audit
 		auditTime = parsedAuditList.Items[0].Status.AuditTimestamp
 
+=======
+	//get List of constraints
+	auditList := charts.GetUnstructuredList(client, g.project, Constraint)
+
+	//parse it so that we can extract individual values
+	parsedAuditList := charts.ParseConstraintList(auditList)
+
+	//extract the timestamp of the last constraint audit
+	auditTime := parsedAuditList.Items[0].Status.AuditTimestamp
+
+	//sleep until the first audit finishes running (audit runs every 60 seconds, plus an arbitrary amount of time to set up the audit pod)
+	counter := 0
+	for auditTime == "" && counter < 5 {
+		time.Sleep(1 * time.Minute)
+		counter++
+>>>>>>> d813e9123a381e8e4693f479aa4bde53cb7d0ffe
 	}
 
 	//now that audit has run, get the list of constraints again

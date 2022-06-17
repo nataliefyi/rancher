@@ -53,6 +53,7 @@ type ConstraintResponse struct {
 }
 
 //InstallRancherGatekeeperChart installs the OPA gatekeeper chart
+//InstallRancherGatekeeperChart installs the OPA gatekeeper chart and returns
 func InstallRancherGatekeeperChart(client *rancher.Client, installOptions *InstallOptions) error {
 	hostWithProtocol := fmt.Sprintf("https://%s", client.RancherConfig.Host)
 	gatekeeperChartInstallActionPayload := &payloadOpts{
@@ -303,20 +304,3 @@ func ParseConstraintList(list *unstructured.UnstructuredList) *ConstraintRespons
 	return &parsedConstraint
 
 }
-
-// //helper function that deletes the job "rancher-gatekeeper-crd-create". The job is not deleted otherwise, and causes the test to fail if not deleted
-// func DeleteCRDJob(client *rancher.Client, project *management.Project) {
-
-// 	var JobGroupVersionResource = schema.GroupVersionResource{
-// 		Group:    "batch",
-// 		Version:  "v1",
-// 		Resource: "jobs",
-// 	}
-
-// 	dynamicClient, err := client.GetDownStreamClusterClient(project.ClusterID)
-// 	if err != nil {
-// 		fmt.Println("error: ", err)
-// 	}
-// 	jobResource := dynamicClient.Resource(JobGroupVersionResource).Namespace("")
-// 	jobResource.Delete(context.TODO(), "rancher-gatekeeper-crd-create", metav1.DeleteOptions{})
-// }
