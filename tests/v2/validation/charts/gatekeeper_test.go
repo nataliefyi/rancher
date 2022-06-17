@@ -81,11 +81,11 @@ func (g *GateKeeperTestSuite) TestGatekeeperChart() {
 	err = charts.InstallRancherGatekeeperChart(client, g.gatekeeperChartInstallOptions)
 	require.NoError(g.T(), err)
 
-	g.T().Log("Waiting gatekeeper chart deployments to have expected number of available replicas")
+	g.T().Log("Waiting for gatekeeper chart deployments to have expected number of available replicas")
 	err = charts.WatchAndWaitDeployments(client, g.project.ClusterID, charts.RancherGatekeeperNamespace, metav1.ListOptions{})
 	require.NoError(g.T(), err)
 
-	g.T().Log("Waiting gatekeeper chart DaemonSets to have expected number of available nodes")
+	g.T().Log("Waiting for gatekeeper chart DaemonSets to have expected number of available nodes")
 	err = charts.WatchAndWaitDaemonSets(client, g.project.ClusterID, charts.RancherGatekeeperNamespace, metav1.ListOptions{})
 	require.NoError(g.T(), err)
 
@@ -108,20 +108,25 @@ func (g *GateKeeperTestSuite) TestGatekeeperChart() {
 	_, err = namespaces.CreateNamespace(client, charts.RancherDisallowedNamespace, "{}", map[string]string{}, map[string]string{}, g.project)
 	assert.EqualError(g.T(), err, "admission webhook \"validation.gatekeeper.sh\" denied the request: [all-must-have-owner] All namespaces must have an `owner` label that points to your company username")
 
-	//get List of constraints
-	auditList := charts.GetUnstructuredList(client, g.project, Constraint)
-
-	//parse it so that we can extract individual values
-	parsedAuditList := charts.ParseConstraintList(auditList)
-
-	//extract the timestamp of the last constraint audit
-	auditTime := parsedAuditList.Items[0].Status.AuditTimestamp
-
-	//sleep until the first audit finishes running (audit runs every 60 seconds, plus an arbitrary amount of time to set up the audit pod)
+	//sleep until the first audit finishes running.
+	//AuditTimestamp will be empty string until first audit finishes
+	//audit runs every 60 seconds, plus an arbitrary amount of time to set up the audit pod and for the audit itself
 	counter := 0
+	auditTime := ""
 	for auditTime == "" && counter < 5 {
+
 		time.Sleep(1 * time.Minute)
 		counter++
+
+		//get List of constraints
+		auditList := charts.GetUnstructuredList(client, g.project, Constraint)
+
+		//parse it so that we can extract individual values
+		parsedAuditList := charts.ParseConstraintList(auditList)
+
+		//extract the timestamp of the last constraint audit
+		auditTime = parsedAuditList.Items[0].Status.AuditTimestamp
+
 	}
 
 	//now that audit has run, get the list of constraints again
@@ -141,6 +146,76 @@ func (g *GateKeeperTestSuite) TestGatekeeperChart() {
 	//none of the existing namespaces will have the label required by the constraint, so assert that the total number of violations is the same as the total number of namespaces
 	assert.EqualValues(g.T(), totalNamespaces, totalViolations)
 
+}
+
+func (g *GateKeeperTestSuite) TestUpGradeGatekeeperChart() {
+	subSession := g.session.NewSession()
+	defer subSession.Cleanup()
+
+	client, err := g.client.WithSession(subSession)
+	require.NoError(g.T(), err)
+
+	// Change gatekeeper install option version to previous version of the latest version
+	versionsList, err := client.Catalog.GetListChartVersions(charts.RancherGatekeeperName)
+	require.NoError(g.T(), err)
+	assert.GreaterOrEqualf(g.T(), len(versionsList), 2, "There should be at least 2 versions of the gatekeeper chart")
+	versionLatest := versionsList[0]
+	versionBeforeLatest := versionsList[1]
+	g.gatekeeperChartInstallOptions.Version = versionBeforeLatest
+
+	g.T().Log("Checking if the gatekeeper chart is installed with one of the previous versions")
+	initialGatekeeperChart, err := charts.GetChartStatus(client, g.project.ClusterID, charts.RancherGatekeeperNamespace, charts.RancherGatekeeperNamespace)
+	require.NoError(g.T(), err)
+
+	if initialGatekeeperChart.IsAlreadyInstalled && initialGatekeeperChart.ChartDetails.Spec.Chart.Metadata.Version == versionLatest {
+		g.T().Skip("Skipping the upgrade case, gatekeeper chart is already installed with the latest version")
+	}
+
+	if !initialGatekeeperChart.IsAlreadyInstalled {
+
+		// charts.DeleteCRDJob(client, g.project)
+
+		g.T().Log("Installing gatekeeper chart with the version before the latest version")
+		err = charts.InstallRancherGatekeeperChart(client, g.gatekeeperChartInstallOptions)
+		require.NoError(g.T(), err)
+
+		g.T().Log("Waiting gatekeeper chart deployments to have expected number of available replicas")
+		err = charts.WatchAndWaitDeployments(client, g.project.ClusterID, charts.RancherGatekeeperNamespace, metav1.ListOptions{})
+		require.NoError(g.T(), err)
+
+		g.T().Log("Waiting gatekeeper chart DaemonSets to have expected number of available nodes")
+		err = charts.WatchAndWaitDaemonSets(client, g.project.ClusterID, charts.RancherGatekeeperNamespace, metav1.ListOptions{})
+		require.NoError(g.T(), err)
+	}
+
+	gatekeeperChartPreUpgrade, err := charts.GetChartStatus(client, g.project.ClusterID, charts.RancherGatekeeperNamespace, charts.RancherGatekeeperName)
+	require.NoError(g.T(), err)
+
+	// Validate current version of rancher-gatekeeper is one of the versions before latest
+	chartVersionPreUpgrade := gatekeeperChartPreUpgrade.ChartDetails.Spec.Chart.Metadata.Version
+	require.Contains(g.T(), versionsList[1:], chartVersionPreUpgrade)
+
+	g.gatekeeperChartInstallOptions.Version, err = client.Catalog.GetLatestChartVersion(charts.RancherGatekeeperName)
+	require.NoError(g.T(), err)
+
+	g.T().Log("Upgrading gatekeeper chart to the latest version")
+	err = charts.UpgradeRancherGatekeeperChart(client, g.gatekeeperChartInstallOptions)
+	require.NoError(g.T(), err)
+
+	g.T().Log("Waiting for gatekeeper chart deployments to have expected number of available replicas after upgrade")
+	err = charts.WatchAndWaitDeployments(client, g.project.ClusterID, charts.RancherGatekeeperNamespace, metav1.ListOptions{})
+	require.NoError(g.T(), err)
+
+	g.T().Log("Waiting gatekeeper chart DaemonSets to have expected number of available nodes after upgrade")
+	err = charts.WatchAndWaitDaemonSets(client, g.project.ClusterID, charts.RancherGatekeeperNamespace, metav1.ListOptions{})
+	require.NoError(g.T(), err)
+
+	gatekeeperChartPostUpgrade, err := charts.GetChartStatus(client, g.project.ClusterID, charts.RancherGatekeeperNamespace, charts.RancherGatekeeperName)
+	require.NoError(g.T(), err)
+
+	// Compare rancher-gatekeeper versions
+	chartVersionPostUpgrade := gatekeeperChartPostUpgrade.ChartDetails.Spec.Chart.Metadata.Version
+	require.Equal(g.T(), g.gatekeeperChartInstallOptions.Version, chartVersionPostUpgrade)
 }
 
 func TestGateKeeperTestSuite(t *testing.T) {

@@ -52,7 +52,7 @@ type ConstraintResponse struct {
 	Metadata   interface{}
 }
 
-//InstallRancherGatekeeperChart installs the OPA gatekeeper chart and returns
+//InstallRancherGatekeeperChart installs the OPA gatekeeper chart
 func InstallRancherGatekeeperChart(client *rancher.Client, installOptions *InstallOptions) error {
 	hostWithProtocol := fmt.Sprintf("https://%s", client.RancherConfig.Host)
 	gatekeeperChartInstallActionPayload := &payloadOpts{
@@ -182,6 +182,95 @@ func newGatekeeperChartInstallAction(p *payloadOpts) *types.ChartInstallAction {
 	return chartInstallAction
 }
 
+// UpgradeRanchergatekeeperChart is a helper function that upgrades the rancher-gatekeeper chart.
+func UpgradeRancherGatekeeperChart(client *rancher.Client, installOptions *InstallOptions) error {
+	gatekeeperChartUpgradeActionPayload := &payloadOpts{
+		InstallOptions: *installOptions,
+		Name:           RancherGatekeeperName,
+		Host:           client.RancherConfig.Host,
+		Namespace:      RancherGatekeeperNamespace,
+	}
+
+	chartUpgradeAction := newGatekeeperChartUpgradeAction(gatekeeperChartUpgradeActionPayload)
+
+	catalogClient, err := client.GetClusterCatalogClient(installOptions.ClusterID)
+	if err != nil {
+		return err
+	}
+
+	err = catalogClient.UpgradeChart(chartUpgradeAction)
+	if err != nil {
+		return err
+	}
+
+	adminClient, err := rancher.NewClient(client.RancherConfig.AdminToken, client.Session)
+	if err != nil {
+		return err
+	}
+	adminCatalogClient, err := adminClient.GetClusterCatalogClient(installOptions.ClusterID)
+	if err != nil {
+		return err
+	}
+
+	// wait for chart to be in status pending upgrade
+	watchAppInterface, err := adminCatalogClient.Apps(RancherGatekeeperNamespace).Watch(context.TODO(), metav1.ListOptions{
+		FieldSelector:  "metadata.name=" + RancherGatekeeperName,
+		TimeoutSeconds: &defaults.WatchTimeoutSeconds,
+	})
+	if err != nil {
+		return err
+	}
+
+	err = wait.WatchWait(watchAppInterface, func(event watch.Event) (ready bool, err error) {
+		app := event.Object.(*catalogv1.App)
+
+		state := app.Status.Summary.State
+		if state == string(catalogv1.StatusPendingUpgrade) {
+			return true, nil
+		}
+		return false, nil
+	})
+	if err != nil {
+		return err
+	}
+
+	// wait for chart to be full deployed
+	watchAppInterface, err = adminCatalogClient.Apps(RancherGatekeeperNamespace).Watch(context.TODO(), metav1.ListOptions{
+		FieldSelector:  "metadata.name=" + RancherGatekeeperName,
+		TimeoutSeconds: &defaults.WatchTimeoutSeconds,
+	})
+	if err != nil {
+		return err
+	}
+
+	err = wait.WatchWait(watchAppInterface, func(event watch.Event) (ready bool, err error) {
+		app := event.Object.(*catalogv1.App)
+
+		state := app.Status.Summary.State
+		if state == string(catalogv1.StatusDeployed) {
+			return true, nil
+		}
+		return false, nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// newGatekeeperChartUpgradeAction is a private helper function that returns chart upgrade action.
+func newGatekeeperChartUpgradeAction(p *payloadOpts) *types.ChartUpgradeAction {
+	gatekeeperValues := map[string]interface{}{}
+
+	chartUpgrade := newChartUpgrade(p.Name, p.InstallOptions.Version, p.InstallOptions.ClusterID, p.InstallOptions.ClusterName, p.Host, gatekeeperValues)
+	chartUpgrades := []types.ChartUpgrade{*chartUpgrade}
+
+	chartUpgradeAction := newChartUpgradeAction(p.Namespace, chartUpgrades)
+
+	return chartUpgradeAction
+}
+
 //GetUnstructuredList helper function that returns an unstructured list of data from a cluster resource
 func GetUnstructuredList(client *rancher.Client, project *management.Project, schema schema.GroupVersionResource) *unstructured.UnstructuredList {
 	dynamicClient, err := client.GetDownStreamClusterClient(project.ClusterID)
@@ -214,3 +303,20 @@ func ParseConstraintList(list *unstructured.UnstructuredList) *ConstraintRespons
 	return &parsedConstraint
 
 }
+
+// //helper function that deletes the job "rancher-gatekeeper-crd-create". The job is not deleted otherwise, and causes the test to fail if not deleted
+// func DeleteCRDJob(client *rancher.Client, project *management.Project) {
+
+// 	var JobGroupVersionResource = schema.GroupVersionResource{
+// 		Group:    "batch",
+// 		Version:  "v1",
+// 		Resource: "jobs",
+// 	}
+
+// 	dynamicClient, err := client.GetDownStreamClusterClient(project.ClusterID)
+// 	if err != nil {
+// 		fmt.Println("error: ", err)
+// 	}
+// 	jobResource := dynamicClient.Resource(JobGroupVersionResource).Namespace("")
+// 	jobResource.Delete(context.TODO(), "rancher-gatekeeper-crd-create", metav1.DeleteOptions{})
+// }
