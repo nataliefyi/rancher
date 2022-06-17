@@ -76,32 +76,6 @@ func (g *GateKeeperTestSuite) SetupSuite() {
 
 }
 
-type Visit func(path []interface{}, key interface{}, value interface{})
-
-func MapWalker(data map[interface{}]interface{}, visit Visit) {
-	traverse(data, []interface{}{}, visit)
-}
-
-func traverse(data map[interface{}]interface{}, path []interface{}, visit Visit) {
-
-	for key, value := range data {
-
-		if child, isMap := value.(map[interface{}]interface{}); isMap {
-
-			path = append(path, key)
-			traverse(child, path, visit)
-			path = path[:len(path)-1]
-
-		} else {
-
-			visit(path, key, child)
-
-		}
-
-	}
-
-}
-
 func (g *GateKeeperTestSuite) TestGatekeeperChart() {
 	subSession := g.session.NewSession()
 	defer subSession.Cleanup()
