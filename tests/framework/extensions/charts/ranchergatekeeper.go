@@ -265,7 +265,8 @@ func newGatekeeperChartUpgradeAction(p *payloadOpts) *types.ChartUpgradeAction {
 	gatekeeperValues := map[string]interface{}{}
 
 	chartUpgrade := newChartUpgrade(p.Name, p.InstallOptions.Version, p.InstallOptions.ClusterID, p.InstallOptions.ClusterName, p.Host, gatekeeperValues)
-	chartUpgrades := []types.ChartUpgrade{*chartUpgrade}
+	chartUpgradeCRD := newChartUpgrade(p.Name+"-crd", p.InstallOptions.Version, p.InstallOptions.ClusterID, p.InstallOptions.ClusterName, p.Host, gatekeeperValues)
+	chartUpgrades := []types.ChartUpgrade{*chartUpgradeCRD, *chartUpgrade}
 
 	chartUpgradeAction := newChartUpgradeAction(p.Namespace, chartUpgrades)
 
