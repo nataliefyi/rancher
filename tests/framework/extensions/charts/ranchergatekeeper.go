@@ -2,16 +2,20 @@ package charts
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/rancher/rancher/pkg/api/steve/catalog/types"
 	catalogv1 "github.com/rancher/rancher/pkg/apis/catalog.cattle.io/v1"
 	"github.com/rancher/rancher/tests/framework/clients/rancher"
+	management "github.com/rancher/rancher/tests/framework/clients/rancher/generated/management/v3"
 	"github.com/rancher/rancher/tests/framework/extensions/namespaces"
 	"github.com/rancher/rancher/tests/framework/pkg/wait"
 	"github.com/rancher/rancher/tests/integration/pkg/defaults"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
 )
 
@@ -25,7 +29,7 @@ const (
 )
 
 type Status struct {
-	AuditTimestamp  map[string]string
+	AuditTimestamp  string
 	ByPod           interface{}
 	TotalViolations int64
 	Violations      []interface{}
@@ -37,6 +41,10 @@ type Items struct {
 	Spec       interface{}
 	Status     Status
 }
+
+// Constraint repsonse is the data structure that is used to extract data about the gatekeeper constraint,
+//It contains the Items and Status structs, which are used for the same purpose
+//anything more complex that isn't being used in the test is assigned to an interface
 type ConstraintResponse struct {
 	ApiVersion string
 	Items      []Items
@@ -44,14 +52,7 @@ type ConstraintResponse struct {
 	Metadata   interface{}
 }
 
-// type namespaceOpts struct {
-// 	Namespace                     string
-// 	ContainerDefaultResourceLimit string
-// 	labels                        map[string]string
-// 	annotations                   map[string]string
-// 	project                       client.Project
-// }
-
+//InstallRancherGatekeeperChart installs the OPA gatekeeper chart and returns
 func InstallRancherGatekeeperChart(client *rancher.Client, installOptions *InstallOptions) error {
 	hostWithProtocol := fmt.Sprintf("https://%s", client.RancherConfig.Host)
 	gatekeeperChartInstallActionPayload := &payloadOpts{
@@ -144,7 +145,7 @@ func InstallRancherGatekeeperChart(client *rancher.Client, installOptions *Insta
 		return err
 	}
 
-	// wait for chart to be full deployed
+	// wait for chart to be fully deployed
 	watchAppInterface, err := catalogClient.Apps(RancherGatekeeperNamespace).Watch(context.TODO(), metav1.ListOptions{
 		FieldSelector:  "metadata.name=" + RancherGatekeeperName,
 		TimeoutSeconds: &defaults.WatchTimeoutSeconds,
@@ -168,6 +169,7 @@ func InstallRancherGatekeeperChart(client *rancher.Client, installOptions *Insta
 	return nil
 }
 
+//newGatekeeperChartInstallAction is a helper function that returns an array of newChartInstallActions for installing the gatekeeper and gatekeepr-crd charts
 func newGatekeeperChartInstallAction(p *payloadOpts) *types.ChartInstallAction {
 	gatekeeperValues := map[string]interface{}{}
 
@@ -178,4 +180,37 @@ func newGatekeeperChartInstallAction(p *payloadOpts) *types.ChartInstallAction {
 	chartInstallAction := newChartInstallAction(p.Namespace, p.ProjectID, chartInstalls)
 
 	return chartInstallAction
+}
+
+//GetUnstructuredList helper function that returns an unstructured list of data from a cluster resource
+func GetUnstructuredList(client *rancher.Client, project *management.Project, schema schema.GroupVersionResource) *unstructured.UnstructuredList {
+	dynamicClient, err := client.GetDownStreamClusterClient(project.ClusterID)
+	if err != nil {
+		fmt.Println("error: ", err)
+	}
+
+	unstructured := dynamicClient.Resource(schema).Namespace("")
+
+	unstructuredList, err := unstructured.List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		fmt.Println("error: ", err)
+	}
+
+	return unstructuredList
+}
+
+//ParseConstraintList converts an Unstructed List into a Constraint response. This is necessary because the built in methods for UnstructuredList aren't capable of getting values from a sufficiently nested list
+//Of note scheme.scheme.Convert() fails because constraints have custom Kinds that Convert can't parse,
+//marshaling the list of constraints to json, then unmarshaling it into the ConstraintResponse data structure I created was the only method I found capable of getting values from deeply nested UnstructuredLists
+func ParseConstraintList(list *unstructured.UnstructuredList) *ConstraintResponse {
+	jsonConstraint, err := list.MarshalJSON()
+	if err != nil {
+		fmt.Println("error: ", err)
+	}
+
+	var parsedConstraint ConstraintResponse
+	json.Unmarshal([]byte(jsonConstraint), &parsedConstraint)
+
+	return &parsedConstraint
+
 }

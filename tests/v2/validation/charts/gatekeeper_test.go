@@ -1,8 +1,6 @@
 package charts
 
 import (
-	"context"
-	"encoding/json"
 	"os"
 	"testing"
 	"time"
@@ -44,13 +42,9 @@ func (g *GateKeeperTestSuite) SetupSuite() {
 	clusterName := client.RancherConfig.ClusterName
 	require.NotEmptyf(g.T(), clusterName, "Cluster name to install is not set")
 
-	g.T().Log("cluster name " + clusterName)
-
 	// Get clusterID with clusterName
 	clusterID, err := clusters.GetClusterIDByName(client, clusterName)
 	require.NoError(g.T(), err)
-
-	g.T().Log("cluster id " + clusterID)
 
 	//get latest version of gatekeeper chart
 	latestGatekeeperVersion, err := client.Catalog.GetLatestChartVersion(charts.RancherGatekeeperName)
@@ -103,8 +97,10 @@ func (g *GateKeeperTestSuite) TestGatekeeperChart() {
 		YAML:             string(readYamlFile),
 	}
 
+	//get the cluster
 	cluster, err := client.Management.Cluster.ByID(g.project.ClusterID)
 	require.NoError(g.T(), err)
+	//Use ActionImportYaml to the apply the constraint yaml file
 	_, err = client.Management.Cluster.ActionImportYaml(cluster, yamlInput)
 	require.NoError(g.T(), err)
 
@@ -112,31 +108,37 @@ func (g *GateKeeperTestSuite) TestGatekeeperChart() {
 	_, err = namespaces.CreateNamespace(client, charts.RancherDisallowedNamespace, "{}", map[string]string{}, map[string]string{}, g.project)
 	assert.EqualError(g.T(), err, "admission webhook \"validation.gatekeeper.sh\" denied the request: [all-must-have-owner] All namespaces must have an `owner` label that points to your company username")
 
-	//this wait ensure that the gatekeeper audit runs before we get the list of constraint violations. If we get the list of violations before the audit is complete, it will be empty and the test will fail.
-	time.Sleep(5 * time.Minute)
+	//get List of constraints
+	auditList := charts.GetUnstructuredList(client, g.project, Constraint)
 
-	dynamicClient, err := g.client.GetDownStreamClusterClient(g.project.ClusterID)
-	require.NoError(g.T(), err)
+	//parse it so that we can extract individual values
+	parsedAuditList := charts.ParseConstraintList(auditList)
 
-	constraint := dynamicClient.Resource(Constraint).Namespace("")
+	//extract the timestamp of the last constraint audit
+	auditTime := parsedAuditList.Items[0].Status.AuditTimestamp
 
-	constraintList, err := constraint.List(context.TODO(), metav1.ListOptions{})
-	require.NoError(g.T(), err)
+	//sleep until the first audit finishes running (audit runs every 60 seconds, plus an arbitrary amount of time to set up the audit pod)
+	counter := 0
+	for auditTime == "" && counter < 5 {
+		time.Sleep(1 * time.Minute)
+		counter++
+	}
 
-	jsonConstraint, err := constraintList.MarshalJSON()
-	require.NoError(g.T(), err)
+	//now that audit has run, get the list of constraints again
+	constraintList := charts.GetUnstructuredList(client, g.project, Constraint)
 
-	var violations charts.ConstraintResponse
-	json.Unmarshal([]byte(jsonConstraint), &violations)
+	//parse it
+	violations := charts.ParseConstraintList(constraintList)
 
-	namespaces := dynamicClient.Resource(Namespaces).Namespace("")
+	//get the list of namespaces, no need to parse, UnstructuredList.Items is enough
+	namespacesList := charts.GetUnstructuredList(client, g.project, Namespaces)
 
-	namespacesList, err := namespaces.List(context.TODO(), metav1.ListOptions{})
-	require.NoError(g.T(), err)
-
+	//get the number of constraint violations
 	totalViolations := violations.Items[0].Status.TotalViolations
+	//get the number of namespaces
 	totalNamespaces := len(namespacesList.Items)
 
+	//none of the existing namespaces will have the label required by the constraint, so assert that the total number of violations is the same as the total number of namespaces
 	assert.EqualValues(g.T(), totalNamespaces, totalViolations)
 
 }

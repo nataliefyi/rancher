@@ -56,10 +56,6 @@ type RancherMonitoringOpts struct {
 	RKEScheduler         bool
 }
 
-// RancherGatekeeperOpts is a struct of the required options to install OPA Gatekeeper with desired chart values
-type RancherGatekeeperOpts struct {
-}
-
 // GetChartCaseEndpointResult is a struct that GetChartCaseEndpoint helper function returns.
 // It contains the boolean for healthy response and the request body.
 type GetChartCaseEndpointResult struct {
