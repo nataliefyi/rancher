@@ -24,6 +24,8 @@ const (
 	RancherGatekeeperNamespace = "cattle-gatekeeper-system"
 	// Name of the rancher gatekeeper chart
 	RancherGatekeeperName = "rancher-gatekeeper"
+	// Name of rancher gatekeepr crd chart
+	RancherGatekeeperCRDName = "rancher-gatekeeper-crd"
 	//namespace that is created without a label
 	RancherDisallowedNamespace = "no-label"
 )
@@ -42,9 +44,9 @@ type Items struct {
 	Status     Status
 }
 
-// Constraint repsonse is the data structure that is used to extract data about the gatekeeper constraint,
+// ConstraintResponse is the data structure that is used to extract data about the gatekeeper constraint created in the test
 //It contains the Items and Status structs, which are used for the same purpose
-//anything more complex that isn't being used in the test is assigned to an interface
+//anything that isn't being used in the test is declared as a string or an interface
 type ConstraintResponse struct {
 	ApiVersion string
 	Items      []Items
@@ -53,7 +55,6 @@ type ConstraintResponse struct {
 }
 
 //InstallRancherGatekeeperChart installs the OPA gatekeeper chart
-//InstallRancherGatekeeperChart installs the OPA gatekeeper chart and returns
 func InstallRancherGatekeeperChart(client *rancher.Client, installOptions *InstallOptions) error {
 	hostWithProtocol := fmt.Sprintf("https://%s", client.RancherConfig.Host)
 	gatekeeperChartInstallActionPayload := &payloadOpts{
@@ -71,6 +72,8 @@ func InstallRancherGatekeeperChart(client *rancher.Client, installOptions *Insta
 	}
 
 	// Cleanup registration
+
+	//register uninstall rancher-gatekeeper as a cleanup function
 	client.Session.RegisterCleanupFunc(func() error {
 		// UninstallAction for when uninstalling the rancher-gatekeeper chart
 		defaultChartUninstallAction := newChartUninstallAction()
@@ -140,6 +143,77 @@ func InstallRancherGatekeeperChart(client *rancher.Client, installOptions *Insta
 			return false, nil
 		})
 	})
+
+	// //register uninstall rancher-gatekeeper-crd as a cleanup function
+	// client.Session.RegisterCleanupFunc(func() error {
+	// 	// UninstallAction for when uninstalling the rancher-gatekeeper-crd chart
+	// 	defaultChartUninstallAction := newChartUninstallAction()
+
+	// 	err := catalogClient.UninstallChart(RancherGatekeeperCRDName, RancherGatekeeperNamespace, defaultChartUninstallAction)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+
+	// 	watchAppInterface, err := catalogClient.Apps(RancherGatekeeperNamespace).Watch(context.TODO(), metav1.ListOptions{
+	// 		FieldSelector:  "metadata.name=" + RancherGatekeeperCRDName,
+	// 		TimeoutSeconds: &defaults.WatchTimeoutSeconds,
+	// 	})
+	// 	if err != nil {
+	// 		return err
+	// 	}
+
+	// 	return wait.WatchWait(watchAppInterface, func(event watch.Event) (ready bool, err error) {
+	// 		if event.Type == watch.Error {
+	// 			return false, fmt.Errorf("there was an error uninstalling rancher-gatekeeper-crd chart")
+	// 		} else if event.Type == watch.Deleted {
+	// 			return true, nil
+	// 		}
+	// 		return false, nil
+	// 	})
+	// if err != nil {
+	// 	return err
+	// }
+
+	// dynamicClient, err := client.GetDownStreamClusterClient(installOptions.ClusterID)
+	// if err != nil {
+	// 	return err
+	// }
+	// namespaceResource := dynamicClient.Resource(namespaces.NamespaceGroupVersionResource).Namespace("")
+
+	// err = namespaceResource.Delete(context.TODO(), RancherGatekeeperNamespace, metav1.DeleteOptions{})
+	// if errors.IsNotFound(err) {
+	// 	return nil
+	// }
+	// if err != nil {
+	// 	return err
+	// }
+
+	// adminClient, err := rancher.NewClient(client.RancherConfig.AdminToken, client.Session)
+	// if err != nil {
+	// 	return err
+	// }
+	// adminDynamicClient, err := adminClient.GetDownStreamClusterClient(installOptions.ClusterID)
+	// if err != nil {
+	// 	return err
+	// }
+	// adminNamespaceResource := adminDynamicClient.Resource(namespaces.NamespaceGroupVersionResource).Namespace("")
+
+	// watchNamespaceInterface, err := adminNamespaceResource.Watch(context.TODO(), metav1.ListOptions{
+	// 	FieldSelector:  "metadata.name=" + RancherGatekeeperNamespace,
+	// 	TimeoutSeconds: &defaults.WatchTimeoutSeconds,
+	// })
+
+	// if err != nil {
+	// 	return err
+	// }
+
+	// return wait.WatchWait(watchNamespaceInterface, func(event watch.Event) (ready bool, err error) {
+	// 	if event.Type == watch.Deleted {
+	// 		return true, nil
+	// 	}
+	// 	return false, nil
+	// })
+	// })
 
 	err = catalogClient.InstallChart(chartInstallAction)
 	if err != nil {
@@ -291,7 +365,7 @@ func GetUnstructuredList(client *rancher.Client, project *management.Project, sc
 }
 
 //ParseConstraintList converts an Unstructed List into a Constraint response. This is necessary because the built in methods for UnstructuredList aren't capable of getting values from a sufficiently nested list
-//Of note scheme.scheme.Convert() fails because constraints have custom Kinds that Convert can't parse,
+//Of note, scheme.scheme.Convert() fails because constraints have custom Kinds that Convert can't parse,
 //marshaling the list of constraints to json, then unmarshaling it into the ConstraintResponse data structure I created was the only method I found capable of getting values from deeply nested UnstructuredLists
 func ParseConstraintList(list *unstructured.UnstructuredList) *ConstraintResponse {
 	jsonConstraint, err := list.MarshalJSON()

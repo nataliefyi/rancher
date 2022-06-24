@@ -160,11 +160,13 @@ func (g *GateKeeperTestSuite) TestUpGradeGatekeeperChart() {
 	require.NoError(g.T(), err)
 	assert.GreaterOrEqualf(g.T(), len(versionsList), 2, "There should be at least 2 versions of the gatekeeper chart")
 	versionLatest := versionsList[0]
+	g.T().Log(versionLatest)
 	versionBeforeLatest := versionsList[1]
+	g.T().Log(versionBeforeLatest)
 	g.gatekeeperChartInstallOptions.Version = versionBeforeLatest
 
 	g.T().Log("Checking if the gatekeeper chart is installed with one of the previous versions")
-	initialGatekeeperChart, err := charts.GetChartStatus(client, g.project.ClusterID, charts.RancherGatekeeperNamespace, charts.RancherGatekeeperNamespace)
+	initialGatekeeperChart, err := charts.GetChartStatus(client, g.project.ClusterID, charts.RancherGatekeeperNamespace, charts.RancherGatekeeperName)
 	require.NoError(g.T(), err)
 
 	if initialGatekeeperChart.IsAlreadyInstalled && initialGatekeeperChart.ChartDetails.Spec.Chart.Metadata.Version == versionLatest {
@@ -172,8 +174,6 @@ func (g *GateKeeperTestSuite) TestUpGradeGatekeeperChart() {
 	}
 
 	if !initialGatekeeperChart.IsAlreadyInstalled {
-
-		// charts.DeleteCRDJob(client, g.project)
 
 		g.T().Log("Installing gatekeeper chart with the version before the latest version")
 		err = charts.InstallRancherGatekeeperChart(client, g.gatekeeperChartInstallOptions)
@@ -190,6 +190,8 @@ func (g *GateKeeperTestSuite) TestUpGradeGatekeeperChart() {
 
 	gatekeeperChartPreUpgrade, err := charts.GetChartStatus(client, g.project.ClusterID, charts.RancherGatekeeperNamespace, charts.RancherGatekeeperName)
 	require.NoError(g.T(), err)
+	g.T().Log(*gatekeeperChartPreUpgrade)
+	g.T().Log(charts.GetChartStatus(client, g.project.ClusterID, charts.RancherGatekeeperNamespace, charts.RancherGatekeeperName))
 
 	// Validate current version of rancher-gatekeeper is one of the versions before latest
 	chartVersionPreUpgrade := gatekeeperChartPreUpgrade.ChartDetails.Spec.Chart.Metadata.Version
