@@ -12,11 +12,13 @@ import (
 	"github.com/rancher/rancher/tests/framework/extensions/namespaces"
 	"github.com/rancher/rancher/tests/framework/pkg/wait"
 	"github.com/rancher/rancher/tests/integration/pkg/defaults"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
+	//apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 )
 
 const (
@@ -107,12 +109,29 @@ func InstallRancherGatekeeperChart(client *rancher.Client, installOptions *Insta
 		if err != nil {
 			return err
 		}
+
 		namespaceResource := dynamicClient.Resource(namespaces.NamespaceGroupVersionResource).Namespace("")
 
 		err = namespaceResource.Delete(context.TODO(), RancherGatekeeperNamespace, metav1.DeleteOptions{})
 		if errors.IsNotFound(err) {
 			return nil
 		}
+		if err != nil {
+			return err
+		}
+
+		// create empty slice
+		//get crds that match "gatekeeper"
+		//add to slice
+		//for each string in slice, use dynamicClient to delete that CRD
+		clusterRoleResource := dynamicClient.Resource(rbacv1.SchemeGroupVersion.WithResource("clusterroles"))
+		err = clusterRoleResource.Delete(context.TODO(), "rancher-gatekeeper-crd-manager", metav1.DeleteOptions{})
+		if err != nil {
+			return err
+		}
+
+		clusterRoleBindingResource := dynamicClient.Resource(rbacv1.SchemeGroupVersion.WithResource("clusterrolebindings"))
+		err = clusterRoleBindingResource.Delete(context.TODO(), "rancher-gatekeeper-crd-manager", metav1.DeleteOptions{})
 		if err != nil {
 			return err
 		}
@@ -142,78 +161,8 @@ func InstallRancherGatekeeperChart(client *rancher.Client, installOptions *Insta
 			}
 			return false, nil
 		})
+
 	})
-
-	// //register uninstall rancher-gatekeeper-crd as a cleanup function
-	// client.Session.RegisterCleanupFunc(func() error {
-	// 	// UninstallAction for when uninstalling the rancher-gatekeeper-crd chart
-	// 	defaultChartUninstallAction := newChartUninstallAction()
-
-	// 	err := catalogClient.UninstallChart(RancherGatekeeperCRDName, RancherGatekeeperNamespace, defaultChartUninstallAction)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	watchAppInterface, err := catalogClient.Apps(RancherGatekeeperNamespace).Watch(context.TODO(), metav1.ListOptions{
-	// 		FieldSelector:  "metadata.name=" + RancherGatekeeperCRDName,
-	// 		TimeoutSeconds: &defaults.WatchTimeoutSeconds,
-	// 	})
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	return wait.WatchWait(watchAppInterface, func(event watch.Event) (ready bool, err error) {
-	// 		if event.Type == watch.Error {
-	// 			return false, fmt.Errorf("there was an error uninstalling rancher-gatekeeper-crd chart")
-	// 		} else if event.Type == watch.Deleted {
-	// 			return true, nil
-	// 		}
-	// 		return false, nil
-	// 	})
-	// if err != nil {
-	// 	return err
-	// }
-
-	// dynamicClient, err := client.GetDownStreamClusterClient(installOptions.ClusterID)
-	// if err != nil {
-	// 	return err
-	// }
-	// namespaceResource := dynamicClient.Resource(namespaces.NamespaceGroupVersionResource).Namespace("")
-
-	// err = namespaceResource.Delete(context.TODO(), RancherGatekeeperNamespace, metav1.DeleteOptions{})
-	// if errors.IsNotFound(err) {
-	// 	return nil
-	// }
-	// if err != nil {
-	// 	return err
-	// }
-
-	// adminClient, err := rancher.NewClient(client.RancherConfig.AdminToken, client.Session)
-	// if err != nil {
-	// 	return err
-	// }
-	// adminDynamicClient, err := adminClient.GetDownStreamClusterClient(installOptions.ClusterID)
-	// if err != nil {
-	// 	return err
-	// }
-	// adminNamespaceResource := adminDynamicClient.Resource(namespaces.NamespaceGroupVersionResource).Namespace("")
-
-	// watchNamespaceInterface, err := adminNamespaceResource.Watch(context.TODO(), metav1.ListOptions{
-	// 	FieldSelector:  "metadata.name=" + RancherGatekeeperNamespace,
-	// 	TimeoutSeconds: &defaults.WatchTimeoutSeconds,
-	// })
-
-	// if err != nil {
-	// 	return err
-	// }
-
-	// return wait.WatchWait(watchNamespaceInterface, func(event watch.Event) (ready bool, err error) {
-	// 	if event.Type == watch.Deleted {
-	// 		return true, nil
-	// 	}
-	// 	return false, nil
-	// })
-	// })
 
 	err = catalogClient.InstallChart(chartInstallAction)
 	if err != nil {

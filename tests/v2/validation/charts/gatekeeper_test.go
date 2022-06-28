@@ -1,10 +1,12 @@
 package charts
 
 import (
+	"context"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/rancher/rancher/pkg/api/scheme"
 	"github.com/rancher/rancher/tests/framework/clients/rancher"
 	management "github.com/rancher/rancher/tests/framework/clients/rancher/generated/management/v3"
 	"github.com/rancher/rancher/tests/framework/extensions/charts"
@@ -14,7 +16,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 type GateKeeperTestSuite struct {
@@ -67,6 +71,40 @@ func (g *GateKeeperTestSuite) SetupSuite() {
 		Version:     latestGatekeeperVersion,
 		ProjectID:   createdProject.ID,
 	}
+
+}
+
+func (g *GateKeeperTestSuite) TestGetCRDnames() {
+	subSession := g.session.NewSession()
+	defer subSession.Cleanup()
+
+	var CustomResourceDefinition = schema.GroupVersionResource{
+		Group:    "apiextensions.k8s.io",
+		Version:  "v1",
+		Resource: "customresourcedefinitions",
+	}
+
+	var CRDList []apiextensionsv1.CustomResourceDefinition
+
+	client, err := g.client.WithSession(subSession)
+	require.NoError(g.T(), err)
+
+	dynamicClient, err := client.GetDownStreamClusterClient(g.gatekeeperChartInstallOptions.ClusterID)
+	require.NoError(g.T(), err)
+
+	customResourceDefinitionResource := dynamicClient.Resource(CustomResourceDefinition).Namespace("")
+	CRDs, err := customResourceDefinitionResource.List(context.TODO(), metav1.ListOptions{})
+	require.NoError(g.T(), err)
+
+	for _, unstructuredCRDs := range CRDs.Items {
+		newCRD := &apiextensionsv1.CustomResourceDefinition{}
+		err := scheme.Scheme.Convert(&unstructuredCRDs, newCRD, unstructuredCRDs.GroupVersionKind())
+		assert.NoError(g.T(), err)
+
+		CRDList = append(CRDList, *newCRD)
+	}
+
+	g.T().Log(CRDList)
 
 }
 
