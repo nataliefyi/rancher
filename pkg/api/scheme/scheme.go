@@ -30,6 +30,7 @@ import (
 	rbacv1beta1 "k8s.io/api/rbac/v1beta1"
 	storagev1 "k8s.io/api/storage/v1"
 	storagev1beta1 "k8s.io/api/storage/v1beta1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	apiregistrationv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
@@ -86,6 +87,7 @@ var builders = []runtime.SchemeBuilder{
 	storagev1beta1.SchemeBuilder,
 	apiregistrationv1.SchemeBuilder,
 	apiregistrationv1beta1.SchemeBuilder,
+	apiextensionsv1.SchemeBuilder,
 }
 
 func init() {

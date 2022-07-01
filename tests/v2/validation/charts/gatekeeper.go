@@ -18,3 +18,9 @@ var Namespaces = schema.GroupVersionResource{
 	Version:  "v1",
 	Resource: "namespaces",
 }
+
+// var CustomResourceDefinition = schema.GroupVersionResource{
+// 	Group:    "apiextensions.k8s.io",
+// 	Version:  "v1",
+// 	Resource: "customresourcedefinitions",
+// }

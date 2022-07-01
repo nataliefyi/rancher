@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
+	"github.com/rancher/rancher/pkg/api/scheme"
 	"github.com/rancher/rancher/pkg/api/steve/catalog/types"
 	catalogv1 "github.com/rancher/rancher/pkg/apis/catalog.cattle.io/v1"
 	"github.com/rancher/rancher/tests/framework/clients/rancher"
@@ -12,13 +14,12 @@ import (
 	"github.com/rancher/rancher/tests/framework/extensions/namespaces"
 	"github.com/rancher/rancher/tests/framework/pkg/wait"
 	"github.com/rancher/rancher/tests/integration/pkg/defaults"
-	rbacv1 "k8s.io/api/rbac/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
-	//apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 )
 
 const (
@@ -54,6 +55,12 @@ type ConstraintResponse struct {
 	Items      []Items
 	Kind       string
 	Metadata   interface{}
+}
+
+var CustomResourceDefinition = schema.GroupVersionResource{
+	Group:    "apiextensions.k8s.io",
+	Version:  "v1",
+	Resource: "customresourcedefinitions",
 }
 
 //InstallRancherGatekeeperChart installs the OPA gatekeeper chart
@@ -120,20 +127,29 @@ func InstallRancherGatekeeperChart(client *rancher.Client, installOptions *Insta
 			return err
 		}
 
-		// create empty slice
-		//get crds that match "gatekeeper"
-		//add to slice
-		//for each string in slice, use dynamicClient to delete that CRD
-		clusterRoleResource := dynamicClient.Resource(rbacv1.SchemeGroupVersion.WithResource("clusterroles"))
-		err = clusterRoleResource.Delete(context.TODO(), "rancher-gatekeeper-crd-manager", metav1.DeleteOptions{})
+		customResourceDefinitionResource := dynamicClient.Resource(CustomResourceDefinition).Namespace("")
+		CRDs, err := customResourceDefinitionResource.List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			return err
 		}
 
-		clusterRoleBindingResource := dynamicClient.Resource(rbacv1.SchemeGroupVersion.WithResource("clusterrolebindings"))
-		err = clusterRoleBindingResource.Delete(context.TODO(), "rancher-gatekeeper-crd-manager", metav1.DeleteOptions{})
-		if err != nil {
-			return err
+		for _, unstructuredCRDs := range CRDs.Items {
+			newCRD := &apiextensionsv1.CustomResourceDefinition{}
+			err := scheme.Scheme.Convert(&unstructuredCRDs, newCRD, unstructuredCRDs.GroupVersionKind())
+			if err != nil {
+				return err
+			}
+
+			CRDname := newCRD.Spec.Names.Plural + "." + newCRD.Spec.Group
+
+			if strings.Contains(CRDname, "gatekeeper") {
+				err := customResourceDefinitionResource.Delete(context.TODO(), CRDname, metav1.DeleteOptions{})
+				if err != nil {
+					return err
+				}
+
+			}
+
 		}
 
 		adminClient, err := rancher.NewClient(client.RancherConfig.AdminToken, client.Session)
