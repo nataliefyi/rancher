@@ -7,6 +7,8 @@ import (
 	"github.com/rancher/rancher/pkg/schemas/mapper"
 )
 
+// ProvisioningSchemas is a schema that defines a mapper so the Provisioning Client can
+// be generated in the correct structure
 func ProvisioningSchemas(version *types.APIVersion) *types.Schemas {
 	schemas := factory.Schemas(version)
 	schemas.DefaultMappers = func() []types.Mapper {

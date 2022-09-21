@@ -11,6 +11,7 @@ import (
 	"github.com/rancher/rancher/tests/framework/extensions/machinepools"
 	"github.com/rancher/rancher/tests/framework/extensions/tokenregistration"
 	"github.com/rancher/rancher/tests/framework/extensions/users"
+	password "github.com/rancher/rancher/tests/framework/extensions/users/passwordgenerator"
 	"github.com/rancher/rancher/tests/framework/pkg/config"
 	"github.com/rancher/rancher/tests/framework/pkg/session"
 	"github.com/rancher/rancher/tests/framework/pkg/wait"
@@ -54,9 +55,10 @@ func (c *CustomClusterProvisioningTestSuite) SetupSuite() {
 
 	enabled := true
 	var testuser = provisioning.AppendRandomString("testuser-")
+	var testpassword = password.GenerateUserPassword("testpass-")
 	user := &management.User{
 		Username: testuser,
-		Password: "rancherrancher123!",
+		Password: testpassword,
 		Name:     testuser,
 		Enabled:  &enabled,
 	}
@@ -72,7 +74,7 @@ func (c *CustomClusterProvisioningTestSuite) SetupSuite() {
 	c.standardUserClient = standardUserClient
 }
 
-func (c *CustomClusterProvisioningTestSuite) ProvisioningRKE2CustomCluster(externalNodeProvider ExternalNodeProvider) {
+func (c *CustomClusterProvisioningTestSuite) ProvisioningRKE2CustomCluster(externalNodeProvider provisioning.ExternalNodeProvider) {
 	namespace := "fleet-default"
 
 	nodeRoles0 := []string{
@@ -151,13 +153,17 @@ func (c *CustomClusterProvisioningTestSuite) ProvisioningRKE2CustomCluster(exter
 					err = wait.WatchWait(result, checkFunc)
 					assert.NoError(c.T(), err)
 					assert.Equal(c.T(), clusterName, clusterResp.ObjectMeta.Name)
+
+					clusterToken, err := clusters.CheckServiceAccountTokenSecret(client, clusterName)
+					require.NoError(c.T(), err)
+					assert.NotEmpty(c.T(), clusterToken)
 				})
 			}
 		}
 	}
 }
 
-func (c *CustomClusterProvisioningTestSuite) ProvisioningRKE2CustomClusterDynamicInput(externalNodeProvider ExternalNodeProvider, nodesAndRoles []machinepools.NodeRoles) {
+func (c *CustomClusterProvisioningTestSuite) ProvisioningRKE2CustomClusterDynamicInput(externalNodeProvider provisioning.ExternalNodeProvider, nodesAndRoles []machinepools.NodeRoles) {
 	namespace := "fleet-default"
 
 	rolesPerNode := []string{}
@@ -241,6 +247,10 @@ func (c *CustomClusterProvisioningTestSuite) ProvisioningRKE2CustomClusterDynami
 					err = wait.WatchWait(result, checkFunc)
 					assert.NoError(c.T(), err)
 					assert.Equal(c.T(), clusterName, clusterResp.ObjectMeta.Name)
+
+					clusterToken, err := clusters.CheckServiceAccountTokenSecret(client, clusterName)
+					require.NoError(c.T(), err)
+					assert.NotEmpty(c.T(), clusterToken)
 				})
 			}
 		}
@@ -249,7 +259,7 @@ func (c *CustomClusterProvisioningTestSuite) ProvisioningRKE2CustomClusterDynami
 
 func (c *CustomClusterProvisioningTestSuite) TestProvisioningCustomCluster() {
 	for _, nodeProviderName := range c.nodeProviders {
-		externalNodeProvider := ExternalNodeProviderSetup(nodeProviderName)
+		externalNodeProvider := provisioning.ExternalNodeProviderSetup(nodeProviderName)
 		c.ProvisioningRKE2CustomCluster(externalNodeProvider)
 	}
 }
@@ -264,7 +274,7 @@ func (c *CustomClusterProvisioningTestSuite) TestProvisioningCustomClusterDynami
 	}
 
 	for _, nodeProviderName := range c.nodeProviders {
-		externalNodeProvider := ExternalNodeProviderSetup(nodeProviderName)
+		externalNodeProvider := provisioning.ExternalNodeProviderSetup(nodeProviderName)
 		c.ProvisioningRKE2CustomClusterDynamicInput(externalNodeProvider, nodesAndRoles)
 	}
 }

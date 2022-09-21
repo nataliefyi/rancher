@@ -597,6 +597,7 @@ def run_command_with_stderr(command, log_out=True):
 
 def wait_for_wl_to_active(client, workload, timeout=DEFAULT_TIMEOUT):
     start = time.time()
+    timeout = start + timeout
     workloads = client.list_workload(uuid=workload.uuid).data
     assert len(workloads) == 1
     wl = workloads[0]
@@ -1420,6 +1421,7 @@ def validate_cluster_state(client, cluster,
                            nodes_not_in_active_state=[],
                            timeout=MACHINE_TIMEOUT):
     start_time = time.time()
+    timeout = start_time + timeout
     if check_intermediate_state:
         cluster = wait_for_condition(
             client, cluster,
@@ -1480,7 +1482,11 @@ def delete_node(aws_nodes):
 
 def cluster_cleanup(client, cluster, aws_nodes=None):
     if RANCHER_CLEANUP_CLUSTER:
+        start = time.time()
         client.delete(cluster)
+        if cluster.rancherKubernetesEngineConfig.cloudProvider.name == "azure":
+            time.sleep(20)
+            print("-------sleep time after cluster deletion--------", time.time() - start)
         if aws_nodes is not None:
             delete_node(aws_nodes)
     else:
@@ -2217,6 +2223,7 @@ def generate_template_global_role(name, new_user_default=False, template=None):
 def wait_for_backup_to_active(cluster, backupname,
                               timeout=DEFAULT_TIMEOUT):
     start = time.time()
+    timeout = start + timeout
     etcdbackups = cluster.etcdBackups(name=backupname)
     assert len(etcdbackups) == 1
     etcdbackupdata = etcdbackups['data']
