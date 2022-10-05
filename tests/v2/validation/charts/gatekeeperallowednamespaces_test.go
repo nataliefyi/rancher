@@ -4,7 +4,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 
 	settings "github.com/rancher/rancher/pkg/settings"
 	"github.com/rancher/rancher/tests/framework/clients/rancher"
@@ -12,6 +11,7 @@ import (
 	"github.com/rancher/rancher/tests/framework/extensions/charts"
 	"github.com/rancher/rancher/tests/framework/extensions/clusters"
 	namespaces "github.com/rancher/rancher/tests/framework/extensions/namespaces"
+	"github.com/rancher/rancher/tests/framework/pkg/environmentflag"
 	"github.com/rancher/rancher/tests/framework/pkg/session"
 	"github.com/stretchr/testify/assert"
 	require "github.com/stretchr/testify/require"
@@ -79,19 +79,15 @@ func (n *GateKeeperAllowedNamespacesTestSuite) TestGateKeeperAllowedNamespaces()
 	client, err := n.client.WithSession(subSession)
 	require.NoError(n.T(), err)
 
+	if !client.Flags.GetValue(environmentflag.GatekeeperAllowedNamespaces) {
+		n.T().Skip()
+	}
+
 	n.T().Log("getting list of all namespaces")
 
 	sysNamespaces := settings.SystemNamespaces.Get()
 	sysNamespacesSlice := strings.Split(sysNamespaces, ",")
 	n.T().Log(sysNamespaces)
-	n.T().Log("getting list of all namespaces")
-	// namespacesList, err := getUnstructuredList(client, n.project, Namespaces)
-	// require.NoError(n.T(), err)
-
-	// for _, namespace := range namespacesList.Items {
-	// 	n.T().Log(namespace.GetName())
-	// 	n.T().Log(namespace.GetNamespace())
-	// }
 
 	NSKinds := Kinds{
 		{ApiGroups: []string{""},
@@ -175,8 +171,6 @@ func (n *GateKeeperAllowedNamespacesTestSuite) TestGateKeeperAllowedNamespaces()
 	n.T().Log("Create a namespace that doesn't have an allowed name and assert that creation fails with the expected error")
 	_, err = namespaces.CreateNamespace(client, RancherDisallowedNamespace, "{}", map[string]string{}, map[string]string{}, n.project)
 	assert.ErrorContains(n.T(), err, "admission webhook \"validation.gatekeeper.sh\" denied the request: [ns-must-be-allowed] Namespace not allowed")
-
-	time.Sleep(30 * time.Minute)
 }
 
 func TestGateKeeperAllowedNamespacesTestSuite(t *testing.T) {
