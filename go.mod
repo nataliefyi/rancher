@@ -1,6 +1,6 @@
 module github.com/rancher/rancher
 
-go 1.17
+go 1.19
 
 replace (
 	github.com/docker/distribution => github.com/docker/distribution v2.7.1+incompatible // oras dep requires a replace is set
@@ -22,32 +22,32 @@ replace (
 	go.opentelemetry.io/proto/otlp => go.opentelemetry.io/proto/otlp v0.7.0
 
 	helm.sh/helm/v3 => github.com/rancher/helm/v3 v3.9.0-rancher1
-	k8s.io/api => k8s.io/api v0.24.2
-	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.24.2
-	k8s.io/apimachinery => k8s.io/apimachinery v0.24.2
-	k8s.io/apiserver => k8s.io/apiserver v0.24.2
-	k8s.io/cli-runtime => k8s.io/cli-runtime v0.24.2
+	k8s.io/api => k8s.io/api v0.24.5
+	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.24.5
+	k8s.io/apimachinery => k8s.io/apimachinery v0.24.5
+	k8s.io/apiserver => k8s.io/apiserver v0.24.5
+	k8s.io/cli-runtime => k8s.io/cli-runtime v0.24.5
 	k8s.io/client-go => github.com/rancher/client-go v1.24.0-rancher1
-	k8s.io/cloud-provider => k8s.io/cloud-provider v0.24.2
-	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.24.2
-	k8s.io/code-generator => k8s.io/code-generator v0.24.2
-	k8s.io/component-base => k8s.io/component-base v0.24.2
-	k8s.io/component-helpers => k8s.io/component-helpers v0.24.2
-	k8s.io/controller-manager => k8s.io/controller-manager v0.24.2
-	k8s.io/cri-api => k8s.io/cri-api v0.24.2
-	k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.24.2
-	k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.24.2
-	k8s.io/kube-controller-manager => k8s.io/kube-controller-manager v0.24.2
-	k8s.io/kube-proxy => k8s.io/kube-proxy v0.24.2
-	k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.24.2
-	k8s.io/kubectl => k8s.io/kubectl v0.24.2
-	k8s.io/kubelet => k8s.io/kubelet v0.24.2
+	k8s.io/cloud-provider => k8s.io/cloud-provider v0.24.5
+	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.24.5
+	k8s.io/code-generator => k8s.io/code-generator v0.24.5
+	k8s.io/component-base => k8s.io/component-base v0.24.5
+	k8s.io/component-helpers => k8s.io/component-helpers v0.24.5
+	k8s.io/controller-manager => k8s.io/controller-manager v0.24.5
+	k8s.io/cri-api => k8s.io/cri-api v0.24.5
+	k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.24.5
+	k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.24.5
+	k8s.io/kube-controller-manager => k8s.io/kube-controller-manager v0.24.5
+	k8s.io/kube-proxy => k8s.io/kube-proxy v0.24.5
+	k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.24.5
+	k8s.io/kubectl => k8s.io/kubectl v0.24.5
+	k8s.io/kubelet => k8s.io/kubelet v0.24.5
 	k8s.io/kubernetes => k8s.io/kubernetes v1.24.2
-	k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.24.2
-	k8s.io/metrics => k8s.io/metrics v0.24.2
-	k8s.io/mount-utils => k8s.io/mount-utils v0.24.2
-	k8s.io/pod-security-admission => k8s.io/pod-security-admission v0.24.2
-	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.24.2
+	k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.24.5
+	k8s.io/metrics => k8s.io/metrics v0.24.5
+	k8s.io/mount-utils => k8s.io/mount-utils v0.24.5
+	k8s.io/pod-security-admission => k8s.io/pod-security-admission v0.24.5
+	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.24.5
 
 	sigs.k8s.io/aws-iam-authenticator => github.com/rancher/aws-iam-authenticator v0.5.9-0.20220713170329-78acb8c83863
 	sigs.k8s.io/cluster-api => sigs.k8s.io/cluster-api v1.2.0
@@ -79,6 +79,7 @@ require (
 	github.com/go-ldap/ldap/v3 v3.4.1
 	github.com/go-logr/logr v1.2.3
 	github.com/golang-jwt/jwt v3.2.1+incompatible
+	github.com/golang/mock v1.6.0
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/gorilla/mux v1.8.0
@@ -86,7 +87,6 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/heptio/authenticator v0.0.0-20180409043135-d282f87a1972
-	github.com/knative/pkg v0.0.0-20190817231834-12ee58e32cc8
 	github.com/manicminer/hamilton v0.46.0
 	github.com/mattn/go-colorable v0.1.12
 	github.com/mcuadros/go-version v0.0.0-20180611085657-6d5863ca60fa
@@ -105,7 +105,7 @@ require (
 	github.com/rancher/channelserver v0.5.1-0.20220405170618-28c9b37deff1
 	github.com/rancher/dynamiclistener v0.3.4
 	github.com/rancher/eks-operator v1.1.5-rc1
-	github.com/rancher/fleet/pkg/apis v0.0.0-20220722201012-fe5f76e3c1e0
+	github.com/rancher/fleet/pkg/apis v0.0.0-20220923111749-b6480e9b4d01
 	github.com/rancher/gke-operator v1.1.4
 	github.com/rancher/kubernetes-provider-detector v0.1.5
 	github.com/rancher/lasso v0.0.0-20220627205005-00d9c8e9dda6
@@ -116,9 +116,9 @@ require (
 	github.com/rancher/rancher/pkg/client v0.0.0
 	github.com/rancher/rdns-server v0.0.0-20180802070304-bf662911db6a
 	github.com/rancher/remotedialer v0.2.6-0.20220624190122-ea57207bf2b8
-	github.com/rancher/rke v1.3.14
+	github.com/rancher/rke v1.4.0-rc1
 	github.com/rancher/security-scan v0.1.7-0.20200222041501-f7377f127168
-	github.com/rancher/steve v0.0.0-20220805200026-647cba2be744
+	github.com/rancher/steve v0.0.0-20220928204312-06584d207dac
 	github.com/rancher/system-upgrade-controller/pkg/apis v0.0.0-20210727200656-10b094e30007
 	github.com/rancher/wrangler v1.0.1-0.20220520195731-8eeded9bae2a
 	github.com/robfig/cron v1.1.0
@@ -134,7 +134,7 @@ require (
 	github.com/vmware/kube-fluentd-operator v0.0.0-20190307154903-bf9de7e79eaf
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
 	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3
-	golang.org/x/net v0.0.0-20220708220712-1185a9018129
+	golang.org/x/net v0.0.0-20220722155237-a158d28d115b
 	golang.org/x/oauth2 v0.0.0-20220608161450-d0670ef3b1eb
 	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f
 	golang.org/x/text v0.3.7 // indirect
@@ -145,18 +145,18 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/yaml.v2 v2.4.0
 	helm.sh/helm/v3 v3.9.0
-	k8s.io/api v0.24.2
-	k8s.io/apiextensions-apiserver v0.24.2
-	k8s.io/apimachinery v0.24.2
-	k8s.io/apiserver v0.24.2
-	k8s.io/cli-runtime v0.24.2
+	k8s.io/api v0.24.5
+	k8s.io/apiextensions-apiserver v0.24.5
+	k8s.io/apimachinery v0.24.5
+	k8s.io/apiserver v0.24.5
+	k8s.io/cli-runtime v0.24.5
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/gengo v0.0.0-20211129171323-c02415ce4185
 	k8s.io/helm v2.16.7+incompatible
 	k8s.io/kube-aggregator v0.24.0
-	k8s.io/kubectl v0.24.2
-	k8s.io/kubernetes v1.21.0
-	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9
+	k8s.io/kubectl v0.24.5
+	k8s.io/kubernetes v1.24.5
+	k8s.io/utils v0.0.0-20220728103510-ee6ede2d64ed
 	sigs.k8s.io/aws-iam-authenticator v0.5.9
 	sigs.k8s.io/cluster-api v1.2.0-beta.0
 	sigs.k8s.io/controller-runtime v0.12.3
@@ -355,17 +355,17 @@ require (
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/cluster-bootstrap v0.24.0 // indirect
-	k8s.io/code-generator v0.24.2 // indirect
-	k8s.io/component-base v0.24.2 // indirect
-	k8s.io/component-helpers v0.24.2 // indirect
+	k8s.io/code-generator v0.24.5 // indirect
+	k8s.io/component-base v0.24.5 // indirect
+	k8s.io/component-helpers v0.24.5 // indirect
 	k8s.io/klog v1.0.0 // indirect
-	k8s.io/klog/v2 v2.60.1 // indirect
+	k8s.io/klog/v2 v2.70.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20220627174259-011e075b9cb8 // indirect
 	oras.land/oras-go v1.1.0 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.0.30 // indirect
 	sigs.k8s.io/cli-utils v0.27.0 // indirect
-	sigs.k8s.io/json v0.0.0-20211208200746-9f7c6b3444d2 // indirect
+	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
 	sigs.k8s.io/kustomize/api v0.11.4 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.13.6 // indirect
-	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
+	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
